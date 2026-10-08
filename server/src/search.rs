@@ -68,10 +68,8 @@ pub struct SearxSearchResult {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SearxResponse {
-    pub answers: Vec<String>,
-    pub corrections: Vec<String>,
-    pub infoboxes: Vec<String>,
-    pub number_of_results: f64,
+    // Newer SearXNG versions return objects in `answers`/`infoboxes` and omit
+    // `number_of_results`, so only the fields we use are required.
     pub query: String,
     pub results: Vec<SearxSearchResult>,
 }
@@ -100,13 +98,16 @@ async fn single_page_search(
         Ok(client) => client,
         Err(e) => return Err(SearchError::RequestError(e)),
     };
+    // Google blocks most self-hosted SearXNG instances, so the engines are configurable.
+    let engines =
+        std::env::var("SEARX_ENGINES").unwrap_or_else(|_| "bing,duckduckgo,brave".to_string());
     let response = client
         .get(&searx_url)
         .query(&[
             ("q", query),
             ("format", "json"),
             ("language", "en"),
-            ("engines", "google"),
+            ("engines", engines.as_str()),
             ("pageno", pageno.to_string().as_str()),
         ])
         .send()
